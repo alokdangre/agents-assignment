@@ -1262,7 +1262,7 @@ class AgentActivity(RecognitionHooks):
             return
 
         transcript_text = ev.alternatives[0].text
-        
+
         if (
             self._session.options.ignore_backchanneling
             and self._current_speech is not None
@@ -1274,7 +1274,7 @@ class AgentActivity(RecognitionHooks):
                     filler_words=self._session.options.backchanneling_ignore_words,
                     directive_words=self._session.options.backchanneling_interrupt_words,
                 )
-            result = self._transcript_analyzer.analyze(transcript_text, agent_speaking=True)
+            self._transcript_analyzer.analyze(transcript_text, agent_speaking=True)
             return
 
         self._session._user_input_transcribed(
@@ -1312,16 +1312,16 @@ class AgentActivity(RecognitionHooks):
             and not self._current_speech.interrupted
             and self._current_speech.allow_interruptions
         )
-        
+
         if self._session.options.ignore_backchanneling and agent_is_speaking:
             if self._transcript_analyzer is None:
                 self._transcript_analyzer = TranscriptAnalyzer(
                     filler_words=self._session.options.backchanneling_ignore_words,
                     directive_words=self._session.options.backchanneling_interrupt_words,
                 )
-            
+
             result = self._transcript_analyzer.analyze(transcript_text, agent_speaking=True)
-            
+
             if result.allow_continue:
                 self._buffered_vad_event = None
                 return
@@ -1343,11 +1343,17 @@ class AgentActivity(RecognitionHooks):
         ):
             if self._session.options.ignore_backchanneling and agent_is_speaking:
                 opt = self._session.options
-                use_pause = opt.resume_false_interruption and opt.false_interruption_timeout is not None
-                
+                use_pause = (
+                    opt.resume_false_interruption and opt.false_interruption_timeout is not None
+                )
+
                 self._paused_speech = self._current_speech
-                
-                if use_pause and self._session.output.audio and self._session.output.audio.can_pause:
+
+                if (
+                    use_pause
+                    and self._session.output.audio
+                    and self._session.output.audio.can_pause
+                ):
                     self._session.output.audio.pause()
                     self._session._update_agent_state("listening")
                 else:
@@ -1413,16 +1419,16 @@ class AgentActivity(RecognitionHooks):
             and not self._current_speech.interrupted
             and self._current_speech.allow_interruptions
         )
-        
+
         if self._session.options.ignore_backchanneling and agent_is_speaking:
             if self._transcript_analyzer is None:
                 self._transcript_analyzer = TranscriptAnalyzer(
                     filler_words=self._session.options.backchanneling_ignore_words,
                     directive_words=self._session.options.backchanneling_interrupt_words,
                 )
-            
+
             result = self._transcript_analyzer.analyze(info.new_transcript, agent_speaking=True)
-            
+
             if result.allow_continue:
                 self._cancel_preemptive_generation()
                 return False

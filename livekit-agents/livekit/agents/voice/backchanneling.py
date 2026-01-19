@@ -2,27 +2,63 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
 from ..log import logger
 
 DEFAULT_FILLER_WORDS: list[str] = [
-    "yeah", "yes", "yep", "yup", "ok", "okay", "hmm", "hm",
-    "uh-huh", "uh huh", "right", "aha", "mhm", "mmhmm", "mm-hmm", "mm hmm",
-    "sure", "alright", "got it", "i see", "uh", "um", "ah", "oh",
+    "yeah",
+    "yes",
+    "yep",
+    "yup",
+    "ok",
+    "okay",
+    "hmm",
+    "hm",
+    "uh-huh",
+    "uh huh",
+    "right",
+    "aha",
+    "mhm",
+    "mmhmm",
+    "mm-hmm",
+    "mm hmm",
+    "sure",
+    "alright",
+    "got it",
+    "i see",
+    "uh",
+    "um",
+    "ah",
+    "oh",
 ]
 
 DEFAULT_DIRECTIVE_WORDS: list[str] = [
-    "wait", "stop", "hold on", "hold", "pause", "no", "actually",
-    "but", "however", "excuse me", "sorry", "question", "hang on",
-    "one moment", "one second", "never mind", "cancel",
+    "wait",
+    "stop",
+    "hold on",
+    "hold",
+    "pause",
+    "no",
+    "actually",
+    "but",
+    "however",
+    "excuse me",
+    "sorry",
+    "question",
+    "hang on",
+    "one moment",
+    "one second",
+    "never mind",
+    "cancel",
 ]
 
 
 class SpeechKind(Enum):
     """Classification of user speech while agent is talking."""
+
     FILLER = "filler"
     DIRECTIVE = "directive"
     INPUT = "input"
@@ -33,10 +69,11 @@ class SpeechKind(Enum):
 @dataclass
 class AnalysisResult:
     """Result of analyzing a transcript."""
+
     kind: SpeechKind
     allow_continue: bool
     transcript: str
-    
+
     @property
     def should_ignore(self) -> bool:
         """True if this transcript should be completely ignored."""
@@ -67,27 +104,27 @@ def _split_into_words(text: str) -> list[str]:
 class TranscriptAnalyzer:
     """
     Analyzes user transcripts to determine if agent should continue or stop.
-    
+
     Logic when agent IS speaking:
     - Empty/no words → NOISE (allow_continue=True)
     - Contains directive word → DIRECTIVE (allow_continue=False) → interrupt
     - All words are fillers → FILLER (allow_continue=True) → continue
     - Otherwise → INPUT (allow_continue=False) → interrupt
-    
+
     Logic when agent is NOT speaking:
     - Always returns NEW_TURN (allow_continue=False) → process normally
-    
+
     Example:
         analyzer = TranscriptAnalyzer()
-        
+
         # Agent speaking, user says "yeah"
         result = analyzer.analyze("yeah", agent_speaking=True)
         # result.kind = FILLER, result.allow_continue = True
-        
+
         # Agent speaking, user says "stop"
         result = analyzer.analyze("stop", agent_speaking=True)
         # result.kind = DIRECTIVE, result.allow_continue = False
-        
+
         # Agent silent, user says "yeah"
         result = analyzer.analyze("yeah", agent_speaking=False)
         # result.kind = NEW_TURN, result.allow_continue = False (process it)
@@ -110,14 +147,12 @@ class TranscriptAnalyzer:
                 Defaults to DEFAULT_DIRECTIVE_WORDS. Can be overridden via
                 LIVEKIT_DIRECTIVE_WORDS environment variable.
         """
-        self._filler_words: set[str] = set(
-            word.lower()
-            for word in (
-                filler_words
-                if filler_words is not None
-                else _load_words_from_env("LIVEKIT_FILLER_WORDS", DEFAULT_FILLER_WORDS)
-            )
+        words_source = (
+            filler_words
+            if filler_words is not None
+            else _load_words_from_env("LIVEKIT_FILLER_WORDS", DEFAULT_FILLER_WORDS)
         )
+        self._filler_words: set[str] = {word.lower() for word in words_source}
 
         self._directive_words: list[str] = [
             word.lower()
@@ -151,7 +186,7 @@ class TranscriptAnalyzer:
         words = _split_into_words(normalized_text)
         if not words:
             return True
-        
+
         for word in words:
             if word not in self._filler_words:
                 return False
@@ -220,7 +255,7 @@ class TranscriptAnalyzer:
 
 class BackchannelingFilter(TranscriptAnalyzer):
     """Backward compatible alias for TranscriptAnalyzer."""
-    
+
     def __init__(
         self,
         *,
@@ -231,7 +266,7 @@ class BackchannelingFilter(TranscriptAnalyzer):
             filler_words=ignore_words,
             directive_words=interrupt_words,
         )
-    
+
     def should_ignore(self, transcript: str, *, agent_speaking: bool) -> bool:
         """Check if transcript should be ignored (backward compatible API)."""
         result = self.analyze(transcript, agent_speaking=agent_speaking)
